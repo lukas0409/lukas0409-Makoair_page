@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>좌석 선택 및 예약</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .flight-info {
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 100px; /* 좌석 선택 UI와의 거리 조정 */
+            text-align: center;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: 250px; /* 크기를 줄임 */
+            margin: 0 auto; /* 가운데 정렬 */
+        }
+        .flight-info p {
+            margin: 5px 0;
+            font-size: 16px; /* 폰트 사이즈 조정 */
+        }
+        .seating-chart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px; /* container와의 간격을 50픽셀로 설정 */
+        }
+        .row {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        .seat {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #333;
+            margin: 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .seat.selected {
+            background-color: #007BFF;
+            color: white;
+        }
+        .aisle {
+            width: 10px;
+            height: 30px;
+            background-color: #ccc;
+            margin: 2px;
+        }
+        .passenger-selection {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .passenger-selection button {
+            margin: 0 10px;
+        }
+        .reservation-status {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #reserve-btn {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #reserve-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>좌석 선택</h1>
+        <div class="flight-info">
+            <p id="flight-name"></p>
+            <p id="origin-destination"></p>
+            <p id="aircraft"></p>
+        </div>
+
+        <div class="seating-chart" id="seating-chart">
+            <!-- 좌석 배치가 JavaScript에 의해 동적으로 생성됩니다. -->
+        </div>
+
+        <div class="passenger-selection">
+            <label>인원 선택:</label>
+            <button id="decrease-passenger">-</button>
+            <span id="passenger-count">1</span>
+            <button id="increase-passenger">+</button>
+        </div>
+
+        <button id="reserve-btn">좌석 예약</button>
+        <div class="reservation-status">
+            <h3>예약 상태</h3>
+            <p id="status-message">좌석을 선택하세요.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const flight = urlParams.get('flight');
+            const origin = urlParams.get('origin');
+            const destination = urlParams.get('destination');
+            const aircraft = urlParams.get('aircraft');
+            const aircraftReg = urlParams.get('aircraftReg');
+
+            if (!flight || !origin || !destination || !aircraft || !aircraftReg) {
+                alert('항공편 정보가 부족합니다.');
+                window.location.href = 'index.html'; 
+                return;
+            }
+
+            document.getElementById('flight-name').textContent = `항공편: ${flight}`;
+            document.getElementById('origin-destination').textContent = `출발: ${origin} / 도착: ${destination}`;
+            document.getElementById('aircraft').textContent = `기종: ${aircraft}`;
+
+            const seatingChart = document.getElementById('seating-chart');
+            const statusMessage = document.getElementById('status-message');
+            const passengerCountSpan = document.getElementById('passenger-count');
+            const decreasePassengerBtn = document.getElementById('decrease-passenger');
+            const increasePassengerBtn = document.getElementById('increase-passenger');
+            const reserveBtn = document.getElementById('reserve-btn');
+            let selectedSeats = [];
+            let passengerCount = 1;
+            let reservationNumber = Math.floor(Math.random() * 1000000); // 예시용 예약 번호 생성
+
+            const seatData = {
+                ABC123: [
+                    ['1A', '1B', 'aisle', '1C', '1D'],
+                    ['2A', '2B', 'aisle', '2C', '2D'],
+                    ['3A', '3B', 'aisle', '3C', '3D']
+                ],
+                DEF456: [
+                    ['1A', '1B', 'aisle', '1C'],
+                    ['2A', '2B', 'aisle', '2C'],
+                    ['3A', '3B', 'aisle', '3C'],
+                    ['4A', '4B', 'aisle', '4C']
+                ],
+                GHI789: [
+                    ['1A', '1B', 'aisle'],
+                    ['2A', '2B', 'aisle'],
+                    ['3A', '3B', 'aisle'],
+                    ['4A', '4B', 'aisle'],
+                    ['5A', '5B', 'aisle']
+                ]
+            };
+
+            function generateSeats(aircraftReg) {
+                seatingChart.innerHTML = '';
+                const rows = seatData[aircraftReg];
+                rows.forEach(row => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.classList.add('row');
+                    row.forEach(seat => {
+                        if (seat === 'aisle') {
+                            const aisleDiv = document.createElement('div');
+                            aisleDiv.classList.add('aisle');
+                            rowDiv.appendChild(aisleDiv);
+                        } else {
+                            const seatDiv = document.createElement('div');
+                            seatDiv.classList.add('seat');
+                            seatDiv.dataset.seat = seat;
+                            seatDiv.textContent = seat;
+                            rowDiv.appendChild(seatDiv);
+                        }
+                    });
+                    seatingChart.appendChild(rowDiv);
+                });
+
+                addSeatClickEvent();
+            }
+
+            function addSeatClickEvent() {
+                const seats = document.querySelectorAll('.seat');
+
+                seats.forEach(seat => {
+                    seat.addEventListener('click', () => {
+                        if (seat.classList.contains('selected')) {
+                            seat.classList.remove('selected');
+                            selectedSeats = selectedSeats.filter(s => s !== seat.dataset.seat);
+                        } else if (selectedSeats.length < passengerCount) {
+                            seat.classList.add('selected');
+                            selectedSeats.push(seat.dataset.seat);
+                        }
+
+                        if (selectedSeats.length > 0) {
+                            statusMessage.textContent = `${selectedSeats.join(', ')} 좌석이 선택되었습니다.`;
+                        } else {
+                            statusMessage.textContent = '좌석을 선택하세요.';
+                        }
+                    });
+                });
+            }
+
+            reserveBtn.addEventListener('click', () => {
+                if (selectedSeats.length === passengerCount) {
+                    const seatsString = selectedSeats.join(', ');
+                    statusMessage.textContent = `${seatsString} 좌석이 예약되었습니다.`;
+                    const url = `boarding-pass.html?flight=${encodeURIComponent(flight)}&seats=${encodeURIComponent(seatsString)}&reservationNumber=${reservationNumber}&aircraftReg=${encodeURIComponent(aircraftReg)}`;
+                    window.location.href = url;
+                } else {
+                    statusMessage.textContent = `총 ${passengerCount} 좌석을 선택해주세요.`;
+                }
+            });
+
+            decreasePassengerBtn.addEventListener('click', () => {
+                if (passengerCount > 1) {
+                    passengerCount--;
+                    passengerCountSpan.textContent = passengerCount;
+                    selectedSeats = [];
+                    generateSeats(aircraftReg);
+                    statusMessage.textContent = '좌석을 선택하세요.';
+                }
+            });
+
+            increasePassengerBtn.addEventListener('click', () => {
+                if (passengerCount < 4) {
+                    passengerCount++;
+                    passengerCountSpan.textContent = passengerCount;
+                    selectedSeats = [];
+                    generateSeats(aircraftReg);
+                    statusMessage.textContent = '좌석을 선택하세요.';
+                }
+            });
+
+            generateSeats(aircraftReg);
+        });
+    </script>
+</body>
+</html>

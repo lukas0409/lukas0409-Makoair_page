@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예약 완료</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background-color: #f0f0f0; /* 페이지 전체 배경색 */
+        }
+        .container {
+            max-width: 900px; /* 컨테이너의 가로 길이 설정 */
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .boarding-pass {
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px; /* 패딩 조정 */
+            background-color: #ffffff; /* 탑승권 배경색 */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            width: 50%; /* 가로 길이 50%로 설정 */
+            max-width: 450px; /* 최대 가로 길이 설정 (원래 크기의 절반) */
+            text-align: center; /* 가운데 정렬 */
+            box-sizing: border-box;
+            margin-left: auto; /* 중앙 정렬 */
+            margin-right: auto; /* 중앙 정렬 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* 세로 방향 가운데 정렬 */
+            align-items: center; /* 가로 방향 가운데 정렬 */
+        }
+        .boarding-pass .info {
+            margin: 10px 0;
+        }
+        .boarding-pass h2, .boarding-pass p {
+            margin: 5px 0; /* 여백 조정 */
+        }
+        .boarding-pass .barcode,
+        .boarding-pass .qrcode {
+            width: 120px; /* 바코드 및 QR 코드 크기 조정 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px; /* QR 코드와 바코드 간의 간격 */
+        }
+        .boarding-pass .qrcode {
+            margin-top: 20px; /* QR 코드의 위치 조정 */
+        }
+        .button-container {
+            margin-top: 20px;
+        }
+        .button-container button {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .button-container button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <!-- Include html2canvas, JsBarcode, and QRCode.js libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.0/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.qrcode/1.0/jquery.qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>예약 완료</h1>
+        <div class="boarding-pass" id="boarding-pass">
+            <div class="info">
+                <h2>탑승권</h2>
+                <p>항공편: <span id="flight-name"></span></p>
+                <p>좌석: <span id="seats"></span></p>
+                <p>예약 번호: <span id="reservation-number"></span></p>
+            </div>
+            <div class="barcode">
+                <svg id="barcode"></svg> <!-- 바코드를 표시할 SVG 요소 -->
+            </div>
+            <div class="qrcode" id="qrcode"></div> <!-- QR 코드를 표시할 DIV 요소 -->
+        </div>
+
+        <div class="button-container">
+            <button id="download-image">이미지로 저장</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const flight = urlParams.get('flight');
+            const seats = urlParams.get('seats');
+            const reservationNumber = urlParams.get('reservationNumber');
+
+            document.getElementById('flight-name').textContent = flight;
+            document.getElementById('seats').textContent = seats;
+            document.getElementById('reservation-number').textContent = reservationNumber;
+
+            // Generate barcode
+            JsBarcode("#barcode", reservationNumber, {
+                format: "CODE128",
+                width: 2,
+                height: 80,
+                displayValue: false
+            });
+
+            // Generate QR code
+            $('#qrcode').qrcode({
+                text: `항공편: ${flight}\n좌석: ${seats}\n예약 번호: ${reservationNumber}`,
+                width: 120,
+                height: 120
+            });
+
+            // Image download function
+            document.getElementById('download-image').addEventListener('click', () => {
+                html2canvas(document.getElementById('boarding-pass'), {
+                    useCORS: true,
+                    backgroundColor: '#ffffff' // 탑승권의 배경색을 흰색으로 설정
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = imgData;
+                    link.download = 'boarding-pass.png';
+                    document.body.appendChild(link); // Append the link to the body
+                    link.click();
+                    document.body.removeChild(link); // Remove the link from the body
+                }).catch(error => {
+                    console.error('Error generating image:', error);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
